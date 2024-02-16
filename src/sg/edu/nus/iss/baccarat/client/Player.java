@@ -1,4 +1,4 @@
-package sg.edu.nus.iss.baccarat.server;
+package sg.edu.nus.iss.baccarat.client;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;

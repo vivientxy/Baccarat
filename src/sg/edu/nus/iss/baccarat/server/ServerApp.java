@@ -3,6 +3,8 @@ package sg.edu.nus.iss.baccarat.server;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class ServerApp {
     public static void main(String[] args) {
@@ -19,11 +21,17 @@ public class ServerApp {
             numOfDecks = Integer.parseInt(args[1]);
         }
 
+        System.out.printf( "Server App started at %s\n", port);
+        ExecutorService threadPool = Executors.newFixedThreadPool(1);
+
         try (ServerSocket server = new ServerSocket(port)) {
             System.out.println("Waiting for client connection...");
             Socket socket = server.accept();
             System.out.println("Connected!");
             // initiate game here with while loop (keep listening for client commands)
+            BaccaratEngine engine = new BaccaratEngine(socket, numOfDecks);
+            threadPool.submit(engine);
+            System.out.println("Submitted to threadpool");
         } catch (IOException e) {
             e.printStackTrace();
         }

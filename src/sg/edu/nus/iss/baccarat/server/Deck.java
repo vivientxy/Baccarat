@@ -13,9 +13,26 @@ public class Deck {
         int[] suits = {1,2,3,4};
         for (int suit : suits) {
             for (int val : value) {
-                cards.add(new Card(val, suit));
+                this.cards.add(new Card(val, suit));
             }
         }
+    }
+
+    // instantiate n number of decks (each with 52 cards) within one arraylist
+    public Deck(int numOfDecks) {
+        int[] value = {1,2,3,4,5,6,7,8,9,10,11,12,13};
+        int[] suits = {1,2,3,4};
+        for (int i = 0; i < numOfDecks; i++) {
+            for (int suit : suits) {
+                for (int val : value) {
+                    cards.add(new Card(val, suit));
+                }
+            }
+        }
+    }
+
+    public List<Card> getCards() {
+        return cards;
     }
 
     public void shuffle() {
