@@ -1,4 +1,4 @@
-package sg.edu.nus.iss.baccarat.server;
+package server;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -7,7 +7,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ServerApp {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
 
         // default argument values
         int port = 3000;
@@ -25,17 +25,16 @@ public class ServerApp {
         ExecutorService threadPool = Executors.newFixedThreadPool(1);
 
         try (ServerSocket server = new ServerSocket(port)) {
-            System.out.println("Waiting for client connection...");
-            Socket socket = server.accept();
-            System.out.println("Connected!");
-            // initiate game here with while loop (keep listening for client commands)
-            BaccaratEngine engine = new BaccaratEngine(socket, numOfDecks);
-            threadPool.submit(engine);
-            System.out.println("Submitted to threadpool");
-        } catch (IOException e) {
-            e.printStackTrace();
+            while (true) {  // keep listening for client connection
+                System.out.println("Waiting for client connection...");
+                Socket socket = server.accept();
+                System.out.println("Connected!");
+                // initiate game here with while loop (keep listening for client commands)
+                BaccaratEngine engine = new BaccaratEngine(socket, numOfDecks);
+                threadPool.submit(engine);
+                System.out.println("Submitted to threadpool");
+            }
         }
-
 
     }
 }

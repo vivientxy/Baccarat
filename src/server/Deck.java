@@ -1,11 +1,11 @@
-package sg.edu.nus.iss.baccarat.server;
+package server;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 public class Deck {
-    private List<Card> cards = new ArrayList<>();
+    private List<Float> cards = new ArrayList<>();
 
     // instantiate a new deck with 52 cards
     public Deck() {
@@ -13,7 +13,7 @@ public class Deck {
         int[] suits = {1,2,3,4};
         for (int suit : suits) {
             for (int val : value) {
-                this.cards.add(new Card(val, suit));
+                this.cards.add(Float.parseFloat(val + "." + suit));
             }
         }
     }
@@ -25,13 +25,13 @@ public class Deck {
         for (int i = 0; i < numOfDecks; i++) {
             for (int suit : suits) {
                 for (int val : value) {
-                    cards.add(new Card(val, suit));
+                    this.cards.add(Float.parseFloat(val + "." + suit));
                 }
             }
         }
     }
 
-    public List<Card> getCards() {
+    public List<Float> getCards() {
         return cards;
     }
 
@@ -39,14 +39,14 @@ public class Deck {
         Collections.shuffle(this.cards);
     }
 
-    public Card drawCard() {
-        Card card = this.cards.getLast();
-        this.cards.removeLast();
+    public Float drawCard() {
+        Float card = this.cards.get(0);
+        this.cards.remove(0);
         return card;
     }
 
     public void printDeck() {
-        for (Card card : this.cards) {
+        for (Float card : this.cards) {
             System.out.println(card);
         }
     }

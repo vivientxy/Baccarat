@@ -1,4 +1,4 @@
-package sg.edu.nus.iss.baccarat.client;
+package client;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -6,6 +6,8 @@ import java.net.UnknownHostException;
 
 public class ClientApp {
     public static void main(String[] args) {
+        
+        String playerName = "";
         
         // default argument values
         String host = "localhost";
@@ -21,6 +23,9 @@ public class ClientApp {
         try (Socket socket = new Socket(host,port)) {
             System.out.println("Connected to server.");
             // prompt to send command
+
+            // if command begins with "Login", save args[1] as playerName (overwrite!)
+            // all msges written to server will begin with playerName + " " + msg
 
         } catch (UnknownHostException e) {
             e.printStackTrace();
