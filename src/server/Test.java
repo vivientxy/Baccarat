@@ -12,12 +12,17 @@ import client.Player;
 
 public class Test {
     public static void main(String[] args) {
+
+        Integer i = 192;
+        Integer j = i % 10;
+        System.out.println(j);
+
         Deck deck = new Deck(4);
         deck.shuffle();
         deck.printDeck();
 
-        // Player a = new Player("Alice", new BigDecimal(50.1111));
-        // System.out.println(a.getWallet());
+        Player a = new Player("Alice", new BigDecimal(50.1111));
+        System.out.println(a.getWallet());
 
         try {
             saveDeck(deck);

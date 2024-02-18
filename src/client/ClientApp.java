@@ -7,7 +7,7 @@ import java.net.UnknownHostException;
 public class ClientApp {
     public static void main(String[] args) {
         
-        String playerName = "";
+        // String playerName = "";
         
         // default argument values
         String host = "localhost";
