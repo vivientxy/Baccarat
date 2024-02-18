@@ -1,7 +1,13 @@
 package server;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.net.Socket;
+import java.util.List;
 
 public class BaccaratEngine implements Runnable {
     private Socket socket;
@@ -24,12 +30,12 @@ public class BaccaratEngine implements Runnable {
                 netIO = new NetworkIO(this.socket);
                 String clientRequest = "";
                 // game loop
-
-                clientRequest = netIO.read();
-                decode(clientRequest);
-
-
-
+                // keep listening for client commands
+                while (!(clientRequest = netIO.read()).toLowerCase().equals("exit")) {
+                    decode(clientRequest);
+                    
+                }
+                
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -37,6 +43,27 @@ public class BaccaratEngine implements Runnable {
     }
 
     // methods for the game
+    public void saveDeck(Deck deck) throws IOException {
+        // save cards to a cards.db file in current directory
+        File cardDB = new File("." + File.separator + "cards.db");
+        if (!cardDB.exists()) {
+            cardDB.createNewFile();
+        }
+        OutputStream os = new FileOutputStream(cardDB);
+        OutputStreamWriter writer = new OutputStreamWriter(os);
+        BufferedWriter bw = new BufferedWriter(writer);
+        for (Float card : deck.getCards()) {
+            bw.write(String.valueOf(card));
+            bw.newLine();
+        }
+        writer.flush();
+        bw.flush();
+        os.flush();
+        writer.close();
+        bw.close();
+        os.close();
+    }
+
     public void decode(String clientRequest) {
         String[] command = clientRequest.toLowerCase().split(" ");
         switch (command[0]) {
