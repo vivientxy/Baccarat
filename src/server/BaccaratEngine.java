@@ -1,225 +1,149 @@
 package server;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.List;
 
 public class BaccaratEngine implements Runnable {
     private Socket socket;
-    private Deck bigDeck;
+    private int numOfDecks;
+    private static final String LOGIN = "login";
+    private static final String BET = "bet";
+    private static final String DEAL = "deal";
+    private static final String WITHDRAW = "withdraw";
+    private static final String EXIT = "exit";
 
-    public BaccaratEngine(Socket socket, int numOfDecks) {
+    public BaccaratEngine(Socket socket, int numOfDecks) throws IOException {
         this.socket = socket;
-        // instantiate the corresponding number of decks, shuffle all decks together
-        this.bigDeck = new Deck(numOfDecks);
-        this.bigDeck.shuffle();
+        this.numOfDecks = numOfDecks;
+    }
+
+    // for testing
+    public static void main(String[] args) {
+        
     }
 
     @Override
     public void run() {
         System.out.println("Starting a client thread");
         NetworkIO netIO = null;
+        DBHandler db = new DBHandler();
         boolean gameOn = true;
+
+        // assume 1 round of decks first. play till deck runs out, hence not in while loop
+        try {
+            db.generateDeck(numOfDecks);
+            netIO = new NetworkIO(this.socket);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        
+        // game loop
+        // keep listening for client commands
         while (gameOn) {
             try {
-                netIO = new NetworkIO(this.socket);
-                String clientRequest = "";
-                // game loop
-                // keep listening for client commands
-                while (!(clientRequest = netIO.read()).toLowerCase().equals("exit")) {
-                    String[] command = clientRequest.toLowerCase().split(" ");
-                    String message = "";
-                    // client command will come in as "username " + command
-                    switch (command[1]) {
-                        case "login":
-                            message = login(command[2], Integer.parseInt(command[3]));
-                            break;
-                        case "bet":
-                            message = bet(command[0], Integer.parseInt(command[2]));
-                            break;
-                        case "deal":
-                            message = deal();
-                            break;
-                        default:
-                            break;
+                String clientRequest = netIO.read();
+                // client command will come in as "username " + command
+                String[] command = clientRequest.toLowerCase().split(" ");
+                String message = "Please enter a valid command"; // if empty string passed in
+                if (command.length > 0) {
+                    if (command[0].equals("0") && command[1] != LOGIN) {
+                        message = "Please login first!";
+                    } else {
+                        switch (command[1]) {
+                            case LOGIN:
+                                db.loginAddWallet(command[2], Integer.parseInt(command[3]));
+                                message = "Login successful";
+                                break;
+                            case BET:
+                                int betAmount = Integer.parseInt(command[2]);
+                                int walletAmount = db.checkWallet(command[0]);
+                                if (walletAmount < betAmount) {
+                                    message = "Insufficient amount";
+                                } else {
+                                    db.bet(command[0], betAmount);
+                                    message = "Bet accepted";
+                                }
+                                break;
+                            case DEAL:
+                                message = db.deal();
+                                int winnings = db.retrieveBet(command[0]);
+                                // parse msg to determine winner
+                                switch (results(command[2], message)) {
+                                    case "win":
+                                        message += "\nCongratulations, you've won the bet!";
+                                        winnings += winnings;
+                                        break;
+                                    case "super6":
+                                        message += "\nYou won a super 6! Payout is halved.";
+                                        winnings = (int)(winnings * 1.5);   // round down if decimal
+                                        break;
+                                    case "lose":
+                                        message += "\nYou've lost the bet.";
+                                        winnings = 0;
+                                        break;
+                                    case "tie":
+                                        message += "\nIt was a tie.";
+                                        break;
+                                    default:
+                                        break;
+                                }
+                                db.loginAddWallet(command[0], winnings);
+                                break;
+                            case WITHDRAW:
+                                int amount = db.withdrawWallet(command[0]);
+                                message = "You have withdrawn $" + amount;
+                                break;
+                            case EXIT:
+                                message = "Thanks for playing!";
+                                gameOn = false;
+                                break;
+                            default:
+                                break;
+                        }
                     }
-                    netIO.write(message);
                 }
-                if (clientRequest.equals("exit")) {
-                    gameOn = false;
-                }
+                netIO.write(message); // send one msg back per client command
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+
+
     }
 
-    // methods for the game
-    public void saveDeck(Deck deck) throws IOException {
-        // save cards to a cards.db file in current directory
-        File cardDB = new File("." + File.separator + "cards.db");
-        if (!cardDB.exists()) {
-            cardDB.createNewFile();
+    public String results(String bet, String outcome) {
+        String[] parseOutcome = outcome.split(",");
+        String[] playerHand = parseOutcome[0].split("|");
+        String[] brokerHand = parseOutcome[1].split("|");
+        int playerVal = 0;
+        int brokerVal = 0;
+        for (int i = 1; i < playerHand.length; i++) {
+            playerVal += Integer.parseInt(playerHand[i]);
         }
-        OutputStream os = new FileOutputStream(cardDB);
-        OutputStreamWriter writer = new OutputStreamWriter(os);
-        BufferedWriter bw = new BufferedWriter(writer);
-        for (Float card : deck.getCards()) {
-            bw.write(String.valueOf(card));
-            bw.newLine();
+        for (int i = 1; i < brokerHand.length; i++) {
+            brokerVal += Integer.parseInt(brokerHand[i]);
         }
-        writer.flush();
-        bw.flush();
-        os.flush();
-        writer.close();
-        bw.close();
-        os.close();
-    }
-
-    public String login(String user, int amount) throws IOException {
-        String message = "";
-        // create a file named "kenneth.db" with the
-        // value "100" as the content of the file.
-        File folder = new File("playersDB");
-        File playerDB = new File(folder + File.separator + user + ".db");
-        if (!playerDB.exists()) {
-            playerDB.createNewFile();
-        }
-        OutputStream os = new FileOutputStream(playerDB);
-        OutputStreamWriter writer = new OutputStreamWriter(os);
-        writer.write(amount);
-        writer.flush();
-        os.flush();
-        writer.close();
-        os.close();
-        message = "Login successful. $" + amount + " added to " + user + "'s account.";
-        return message;
-    }
-
-    public String bet(String command, int amount) throws IOException {
-        String message = "";
-        // check against playersDB if client has sufficient funds
-        File folder = new File("playersDB");        
-        if (folder.exists()) {
-            for (File playerDB : folder.listFiles()) {
-                if (playerDB.getName().equals(command)) {
-                    int playerWallet;
-                    InputStream is = new FileInputStream(playerDB);
-                    InputStreamReader reader = new InputStreamReader(is);
-                    playerWallet = reader.read();
-                    reader.close();
-                    is.close();
-                    // check if wallet is sufficient
-                    if (playerWallet >= amount) {
-                        message = "Bet accepted";
-                    } else {
-                        message = "Bet rejected - Player unable to afford bet";
-                    }
-                } else {
-                    message = "Bet rejected - Player does not exist!";
-                }
+        playerVal = playerVal % 10;
+        brokerVal = brokerVal % 10;
+        String results = "";
+        if (playerVal == brokerVal) {
+            results = "tie";
+        } else if (playerVal > brokerVal) {
+            if (bet.equalsIgnoreCase("p")) {
+                results = "win";
+            } else {
+                results = "lose";
             }
-        } else {
-            // playerDB folder does not exist
-            message = "Bet rejected - Player does not exist!";
+        } else if (playerVal < brokerVal) {
+            if (bet.equalsIgnoreCase("p")) {
+                results = "lose";
+            } else if (brokerVal == 6) {
+                results = "super6";
+            } else {
+                results = "win";
+            }
         }
-        return message;
-    }
-
-    public String deal() {
-        // https://www.gra.gov.sg/docs/default-source/game-rules/rws/semi-automated-etg-games/rws-game-rules--non-commission-baccarat-with-super-six-(etg).pdf
-        List<Integer> playerHand = new ArrayList<>();
-        List<Integer> brokerHand = new ArrayList<>();
-        // deal the cards - 2 to player, 2 to broker (alternating)
-        playerHand.add(drawConverted());
-        brokerHand.add(drawConverted());
-        playerHand.add(drawConverted());
-        brokerHand.add(drawConverted());
-        int playerValue = calcHandValue(playerHand);
-        int brokerValue = calcHandValue(brokerHand);
-        // check for natural 8 or 9
-        if (playerValue < 8 && brokerValue < 8) {
-            if (playerValue < 6) {
-                int playerThirdCard = drawConverted();
-                playerHand.add(playerThirdCard);
-                // apply broker draw card rules
-                if (brokerValue <= 2) {
-                    brokerHand.add(drawConverted());
-                } else if (brokerValue == 3) {
-                    if (playerThirdCard != 8) {
-                        brokerHand.add(drawConverted());
-                    }
-                } else if (brokerValue == 4) {
-                    if (playerThirdCard < 2 || playerThirdCard > 7) {
-                        brokerHand.add(drawConverted());
-                    }
-                } else if (brokerValue == 5) {
-                    if (playerThirdCard < 4 || playerThirdCard > 7) {
-                        brokerHand.add(drawConverted());
-                    }
-                } else if (brokerValue == 6) {
-                    if (playerThirdCard < 6 || playerThirdCard > 7) {
-                        brokerHand.add(drawConverted());
-                    }
-                } // if broker 7, no need draw
-            } else if (brokerValue < 6) {
-                brokerHand.add(drawConverted());
-            } // 6-6 rule - no more draws
-        } // natural 8 or 9 - no more draws
-        // print out final hands
-        String message = "P";
-        for (Integer card : playerHand) {
-            message = message + "|" + card;
-        }
-        message += ",B";
-        for (Integer card : brokerHand) {
-            message = message + "|" + card;
-        }
-        return message;
-    }
-
-    public int drawConverted() {
-        // transform J Q K to 10
-        int card = this.bigDeck.drawCard().intValue();
-        if (card > 10) {
-            card = 10;
-        }
-        return card;
-    }
-
-    public int calcHandValue(List<Integer> hand) {
-        int result = 0;
-        for (Integer integer : hand) {
-            result += integer;
-        }
-        return result % 10;
+        return results;
     }
 
 }
-
-
-        // Map<String,List<Integer>> hands = new HashMap<>();
-        // for (int i = 0; i < 4; i++) {
-        //     currentCard = drawConverted();
-        //     if ((i+1) % 2 == 0) {
-        //         sides = "P";
-        //     } else {
-        //         sides = "B";
-        //     }
-        //     if (hands.keySet().contains(sides)) {
-        //         hands.get(sides).add(currentCard);
-        //     } else {
-        //         List<Integer> values = new ArrayList<>();
-        //         values.add(currentCard);
-        //         hands.put(sides, values);
-        //     }
-        // }

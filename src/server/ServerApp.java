@@ -23,18 +23,21 @@ public class ServerApp {
 
         System.out.printf( "Server App started at %s\n", port);
         ExecutorService threadPool = Executors.newFixedThreadPool(1);
+        boolean serverOn = true;
 
         try (ServerSocket server = new ServerSocket(port)) {
-            while (true) {  // keep listening for client connection
-                System.out.println("Waiting for client connection...");
+            while (serverOn) {
+                // keep listening for client connection
+                System.out.println("Waiting for client connection..."); 
                 Socket socket = server.accept();
                 System.out.println("Connected!");
-                // initiate game here with while loop (keep listening for client commands)
-                BaccaratEngine engine = new BaccaratEngine(socket, numOfDecks);
-                threadPool.submit(engine);
-                System.out.println("Submitted to threadpool");
+                while (true) {  
+                    // initiate game here with while loop (keep listening for client commands)
+                    BaccaratEngine engine = new BaccaratEngine(socket, numOfDecks);
+                    threadPool.submit(engine);
+                    System.out.println("Submitted to threadpool");
+                }
             }
         }
-
     }
 }
