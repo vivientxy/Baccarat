@@ -22,6 +22,7 @@ public class DBHandler {
     public DBHandler() {
     }
 
+
     public void writeDB(File path, List<String> contents) throws IOException {
         OutputStream os = new FileOutputStream(path);
         OutputStreamWriter writer = new OutputStreamWriter(os);
@@ -30,9 +31,6 @@ public class DBHandler {
             bw.write(line);
             bw.newLine();
         }
-        bw.flush();
-        writer.flush();
-        os.flush();
         bw.close();
         writer.close();
         os.close();
@@ -43,9 +41,6 @@ public class DBHandler {
         OutputStreamWriter writer = new OutputStreamWriter(os);
         BufferedWriter bw = new BufferedWriter(writer);
         bw.write(contents);
-        bw.flush();
-        writer.flush();
-        os.flush();
         bw.close();
         writer.close();
         os.close();
@@ -136,6 +131,15 @@ public class DBHandler {
         List<String> wallet = readDB(userFile);
         int newWallet = Integer.parseInt(wallet.get(0)) - amount;
         wallet.add(0, String.valueOf(newWallet));
+        writeDB(userFile, wallet);
+        // check if a bet was made in the same session. add to the bet
+        List<String> currentBets = readDB(currentSessionBets);
+        for (String userBet : currentBets) {
+            String[] user = userBet.split(",");
+            if (user[0].equalsIgnoreCase(username)) {
+                amount += Integer.parseInt(user[1]);
+            }
+        }
         // record in current session's bets.db
         writeDB(currentSessionBets, username + "," + String.valueOf(amount) + "\n");
     }
@@ -163,30 +167,20 @@ public class DBHandler {
         brokerHand.add(drawConvertedCard());
         int playerValue = calcHandValue(playerHand);
         int brokerValue = calcHandValue(brokerHand);
+
         // check for natural 8 or 9
         if (playerValue < 8 && brokerValue < 8) {
             if (playerValue < 6) {
                 int playerThirdCard = drawConvertedCard();
                 playerHand.add(playerThirdCard);
                 // apply broker draw card rules
-                if (brokerValue <= 2) {
+                if (brokerValue <= 2 || 
+                    brokerValue == 3 && playerThirdCard != 8 ||
+                    brokerValue == 4 && playerThirdCard > 1 && playerThirdCard < 8 ||
+                    brokerValue == 5 && playerThirdCard > 3 && playerThirdCard < 8 ||
+                    brokerValue == 6 && playerThirdCard > 5 && playerThirdCard < 8
+                    ){
                     brokerHand.add(drawConvertedCard());
-                } else if (brokerValue == 3) {
-                    if (playerThirdCard != 8) {
-                        brokerHand.add(drawConvertedCard());
-                    }
-                } else if (brokerValue == 4) {
-                    if (playerThirdCard < 2 || playerThirdCard > 7) {
-                        brokerHand.add(drawConvertedCard());
-                    }
-                } else if (brokerValue == 5) {
-                    if (playerThirdCard < 4 || playerThirdCard > 7) {
-                        brokerHand.add(drawConvertedCard());
-                    }
-                } else if (brokerValue == 6) {
-                    if (playerThirdCard < 6 || playerThirdCard > 7) {
-                        brokerHand.add(drawConvertedCard());
-                    }
                 } // if broker 7, no need draw
             } else if (brokerValue < 6) {
                 brokerHand.add(drawConvertedCard());
@@ -210,6 +204,10 @@ public class DBHandler {
             result += integer;
         }
         return result % 10;
+    }
+
+    public void flushBets() throws IOException {
+        writeDB(currentSessionBets, "");
     }
 
 }

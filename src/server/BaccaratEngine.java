@@ -17,11 +17,6 @@ public class BaccaratEngine implements Runnable {
         this.numOfDecks = numOfDecks;
     }
 
-    // for testing
-    public static void main(String[] args) {
-        
-    }
-
     @Override
     public void run() {
         System.out.println("Starting a client thread");
@@ -32,6 +27,7 @@ public class BaccaratEngine implements Runnable {
         // assume 1 round of decks first. play till deck runs out, hence not in while loop
         try {
             db.generateDeck(numOfDecks);
+            db.shuffleDeck();
             netIO = new NetworkIO(this.socket);
         } catch (IOException e) {
             e.printStackTrace();
@@ -40,19 +36,25 @@ public class BaccaratEngine implements Runnable {
         // game loop
         // keep listening for client commands
         while (gameOn) {
+            System.out.println("Listening for client commands...");
             try {
                 String clientRequest = netIO.read();
+                System.out.printf("[client] %s\n", clientRequest);
                 // client command will come in as "username " + command
                 String[] command = clientRequest.toLowerCase().split(" ");
                 String message = "Please enter a valid command"; // if empty string passed in
                 if (command.length > 0) {
-                    if (command[0].equals("0") && command[1] != LOGIN) {
+                    if (command[0].equals("0") && !command[1].equals(LOGIN)) {
                         message = "Please login first!";
                     } else {
                         switch (command[1]) {
                             case LOGIN:
-                                db.loginAddWallet(command[2], Integer.parseInt(command[3]));
-                                message = "Login successful";
+                                int buyIn = 0;
+                                if (command.length > 3) {
+                                    buyIn = Integer.parseInt(command[3]);
+                                }
+                                db.loginAddWallet(command[2], buyIn);
+                                message = "Login " + command[2] + " successful. Wallet has $" + db.checkWallet(command[2]);
                                 break;
                             case BET:
                                 int betAmount = Integer.parseInt(command[2]);
@@ -88,9 +90,12 @@ public class BaccaratEngine implements Runnable {
                                         break;
                                 }
                                 db.loginAddWallet(command[0], winnings);
+                                message += " Wallet now has $" + db.checkWallet(command[0]);
+                                db.flushBets();
                                 break;
                             case WITHDRAW:
                                 int amount = db.withdrawWallet(command[0]);
+                                System.out.println(amount);
                                 message = "You have withdrawn $" + amount;
                                 break;
                             case EXIT:
@@ -102,8 +107,10 @@ public class BaccaratEngine implements Runnable {
                         }
                     }
                 }
+                System.out.println(message);
                 netIO.write(message); // send one msg back per client command
-            } catch (IOException e) {
+                System.out.println("Executed client command!");
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
@@ -113,8 +120,8 @@ public class BaccaratEngine implements Runnable {
 
     public String results(String bet, String outcome) {
         String[] parseOutcome = outcome.split(",");
-        String[] playerHand = parseOutcome[0].split("|");
-        String[] brokerHand = parseOutcome[1].split("|");
+        String[] playerHand = parseOutcome[0].split("[|]");
+        String[] brokerHand = parseOutcome[1].split("[|]");
         int playerVal = 0;
         int brokerVal = 0;
         for (int i = 1; i < playerHand.length; i++) {
@@ -125,7 +132,7 @@ public class BaccaratEngine implements Runnable {
         }
         playerVal = playerVal % 10;
         brokerVal = brokerVal % 10;
-        String results = "";
+        String results = "bruh";
         if (playerVal == brokerVal) {
             results = "tie";
         } else if (playerVal > brokerVal) {
