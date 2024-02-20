@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Baccarat Results | Java Project</title>
+</head>
+
+<body>
+
+    <input type="file" name="csvFile" id="csvFile" accept=".csv"> <br><br>
+    <input type="button" value="Read CSV File!" onclick="fetchCSVFile();">
+
+    <table id="dataTable">
+
+        <caption>Baccarat Game Results</caption>
+
+        <tbody>
+
+        </tbody>
+
+    </table>
+
+    <script src="script.js"></script>
+
+    <script type="text/javascript">
+        function fetchCSVFile() {
+            var csvSel = document.querySelector('#csvFile').files;
+            if (csvSel.length > 0) {
+                // Selecting CSV file residing at first index
+                var provFile = csvSel[0];
+                var readCsv = new FileReader();
+                // Method to Read file as String
+                readCsv.readAsText(provFile);
+                // invokes when file is read successfully
+                readCsv.onload = function (e) {
+                    // Reading the provided CSV file data
+                    var csvFileData = e.target.result;
+                    // Generating rows Array of the data by splitting through line breaks
+                    var tableRow = csvFileData.split('\n')
+                }
+            }
+
+
+            var tableBody = document.getElementById('displayData').getElementsByTagName('tbody')[0];
+            tableBody.innerHTML = "";
+
+            for (var loopOverRow = 1; loopOverRow < tableRow.length; loopOverRow++) {
+                var newRow = tableBody.insertRow();
+
+                // Splitting to generate Column Array
+                rowColData = tableRow[loopOverRow].split(',');
+
+                for (var loopOvercol = 0; loopOvercol < rowColData.length; loopOvercol++) {
+
+                    var newCell = newRow.insertCell();
+                    newCell.innerHTML = rowColData[loopOvercol];
+                }
+            }
+        };
+    </script>
+
+
+</body>
+
+</html>
