@@ -1,29 +1,54 @@
-const csvFile = document.getElementById("game_history.csv");
+(function () {
+  document.addEventListener("DOMContentLoaded", function () {
+    // Fetch the CSV file
+    fetch("game_history.csv")
+      .then((response) => response.text())
+      .then((data) => {
+        // Parse CSV data
+        const rows = data.split("\n");
+        const table = document.getElementById("table");
 
+        // Create a table and append it to the 'table' div
+        const htmlTable = document.createElement("table");
+        rows.forEach((rowData) => {
+          if (!rowData) {
+            // don't add empty rows
+            return;
+          }
+          const row = document.createElement("tr");
+          const columns = rowData.split(",");
 
-function fetchCSVFile() {
-    const selCSVFile = csvFile.files[0];
-    const readCSV = new FileReader();
-    readCSV.onload = function (e) {
-        const data = e.target.result;
-        document.write(data);
-    };
-    readCSV.readAsText(selCSVFile);
-};
+          columns.forEach((columnData) => {
+            // Exclude empty values
+            if (columnData.trim() !== "") {
+              const column = document.createElement("td");
 
-<script type="text/javascript">
-    function fetchCSVFile(){
-    var csvSel = document.querySelector('#csvFile').files;
-    if(csvSel.length > 0 ){
-   // Selecting CSV file residing at first index
-    var provFile = csvSel[0];
-    var readCsv = new FileReader();
-    // Method to Read file as String
-    readCsv.readAsText(provFile);
-    // invokes when file is read successfully
-    readCsv.onload = function(e) {
-   // Reading the provided CSV file data
-    var csvFileData = e.target.result;
-    // Generating rows Array of the data by splitting through line breaks
-    var tableRow = csvFileData.split('\n')
-</script>
+              // Apply CSS class based on values
+              column.className = getColumnColorClass(columnData.trim().toUpperCase());
+
+              column.textContent = columnData;
+              row.appendChild(column);
+            }
+          });
+
+          htmlTable.appendChild(row);
+        });
+
+        table.appendChild(htmlTable);
+      })
+      .catch((error) => console.error("Error fetching CSV:", error));
+  });
+
+  function getColumnColorClass(value) {
+    switch (value) {
+      case "B":
+        return "blue";
+      case "P":
+        return "red";
+      case "D":
+        return "green";
+      default:
+        return "";
+    }
+  }
+})();

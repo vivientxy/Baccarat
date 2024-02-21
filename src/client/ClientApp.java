@@ -35,7 +35,7 @@ public class ClientApp {
         OutputStream os = null;
         DataOutputStream dos = null;
 
-        try (Socket socket = new Socket(host,port)) {
+        try (Socket socket = new Socket(host,port)) { // try with resources will auto-close socket
             System.out.println("Connected to server.");
             Console cons = System.console();
             boolean gameOn = true;
@@ -113,11 +113,10 @@ public class ClientApp {
                     bw.write(content.toString());
                     bw.close();
                 }
-
             }
         } catch (IOException e) {
             e.printStackTrace();
-        } 
+        }
 
     }
 }

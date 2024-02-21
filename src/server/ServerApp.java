@@ -22,7 +22,7 @@ public class ServerApp {
         }
 
         System.out.printf( "Server App started at %s\n", port);
-        ExecutorService threadPool = Executors.newFixedThreadPool(2);
+        ExecutorService threadPool = Executors.newFixedThreadPool(1);
         boolean serverOn = true;
 
         try (ServerSocket server = new ServerSocket(port)) {
@@ -31,9 +31,10 @@ public class ServerApp {
                 System.out.println("Waiting for client connection..."); 
                 Socket socket = server.accept();
                 System.out.println("Connected!");
-                BaccaratEngine engine = new BaccaratEngine(socket, numOfDecks);
+                BaccaratEngine engine = new BaccaratEngine(socket, numOfDecks); // this is the game loop!
                 threadPool.submit(engine);
                 System.out.println("Submitted to threadpool");
+                socket.close(); // close the socket! if not server will accept connections on another socket but not release this socket for use
             }
         }
     }
