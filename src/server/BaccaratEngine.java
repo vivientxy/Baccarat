@@ -118,7 +118,7 @@ public class BaccaratEngine implements Runnable {
 
     }
 
-    public String results(String bet, String outcome) {
+    public static String results(String bet, String outcome) {
         String[] parseOutcome = outcome.split(",");
         String[] playerHand = parseOutcome[0].split("[|]");
         String[] brokerHand = parseOutcome[1].split("[|]");
@@ -132,7 +132,7 @@ public class BaccaratEngine implements Runnable {
         }
         playerVal = playerVal % 10;
         brokerVal = brokerVal % 10;
-        String results = "bruh";
+        String results = null;
         if (playerVal == brokerVal) {
             results = "tie";
         } else if (playerVal > brokerVal) {

@@ -198,7 +198,7 @@ public class DBHandler {
         return message;
     }
 
-    public int calcHandValue(List<Integer> hand) {
+    public static int calcHandValue(List<Integer> hand) {
         int result = 0;
         for (Integer integer : hand) {
             result += integer;
