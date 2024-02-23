@@ -34,6 +34,7 @@ Client has to send one of the following commands to server:
 - bet `amount`
 - deal `B` 
 - deal `P`
+- withdraw
 - exit
 
 The program will output winning sides (B, P or D for Broker, Player or Draw respectively) onto the following webpage:
