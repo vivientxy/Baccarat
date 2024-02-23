@@ -34,7 +34,6 @@ public class ServerApp {
                 BaccaratEngine engine = new BaccaratEngine(socket, numOfDecks); // this is the game loop!
                 threadPool.submit(engine);
                 System.out.println("Submitted to threadpool");
-                socket.close(); // close the socket! if not server will accept connections on another socket but not release this socket for use
             }
         }
     }

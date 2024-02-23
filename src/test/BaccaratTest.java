@@ -30,11 +30,11 @@ public class BaccaratTest {
     }
 
     @Test
-    public void testBet() {
+    public void testWinningMultiplier() {
         String bet = "p";
         String hand = "P|10|2|3,B|2|7|4";
 
-        String result = BaccaratEngine.results(bet, hand);
+        float result = BaccaratEngine.winningMultiplier(bet, hand);
 
         assertNotNull(result);
     }

@@ -26,8 +26,8 @@ public class NetworkIO {
        return dis.readUTF();
     }
 
-    public void write(String msg) throws IOException {
-        dos.writeUTF(msg);
+    public void write(String string) throws IOException {
+        dos.writeUTF(string);
         dos.flush();
      }
 

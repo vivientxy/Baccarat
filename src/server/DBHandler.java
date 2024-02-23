@@ -22,6 +22,12 @@ public class DBHandler {
     public DBHandler() {
     }
 
+    public static void main(String[] args) throws IOException {
+        DBHandler db = new DBHandler();
+        String username = "add";
+        int amount = 100;
+        db.loginAddWallet(username, amount);
+    }
 
     public void writeDB(File path, List<String> contents) throws IOException {
         OutputStream os = new FileOutputStream(path);
@@ -62,6 +68,7 @@ public class DBHandler {
     }
 
     public void generateDeck(int numOfDecks) throws IOException {
+        cardsDB.createNewFile();
         List<String> deck = new ArrayList<>();
         int[] value = {1,2,3,4,5,6,7,8,9,10,11,12,13};
         int[] suits = {1,2,3,4};
@@ -97,12 +104,18 @@ public class DBHandler {
         return card;
     }
 
+    public int deckSize() throws IOException {
+        List<String> deck = readDB(cardsDB);
+        return deck.size();
+    }
+
     private File userFile(String username) {
         return new File(usersDB.getPath() + File.separator + username.toLowerCase() + ".db");
     }
 
     public void loginAddWallet(String username, int amount) throws IOException {
         if (!userFile(username).exists()) {
+            usersDB.mkdir();
             userFile(username).createNewFile();
         } else {
             // top up value
@@ -133,6 +146,9 @@ public class DBHandler {
         wallet.add(0, String.valueOf(newWallet));
         writeDB(userFile, wallet);
         // check if a bet was made in the same session. add to the bet
+        if (!currentSessionBets.exists()) {
+            currentSessionBets.createNewFile();
+        }
         List<String> currentBets = readDB(currentSessionBets);
         for (String userBet : currentBets) {
             String[] user = userBet.split(",");
@@ -146,6 +162,9 @@ public class DBHandler {
 
     public int retrieveBet(String username) throws IOException {
         int amount = 0;
+        if (!currentSessionBets.exists()) {
+            currentSessionBets.createNewFile();
+        }
         List<String> bets = readDB(currentSessionBets);
         for (String bet : bets) {
             String[] userBet = bet.split(",");

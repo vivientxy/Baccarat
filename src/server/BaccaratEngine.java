@@ -2,6 +2,7 @@ package server;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.net.SocketException;
 
 public class BaccaratEngine implements Runnable {
     private Socket socket;
@@ -24,7 +25,8 @@ public class BaccaratEngine implements Runnable {
         DBHandler db = new DBHandler();
         boolean gameOn = true;
 
-        // assume 1 round of decks first. play till deck runs out, hence not in while loop
+        // assume 1 round of decks first. play till deck runs out, hence not in while
+        // loop
         try {
             db.generateDeck(numOfDecks);
             db.shuffleDeck();
@@ -32,125 +34,114 @@ public class BaccaratEngine implements Runnable {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        
+
         // game loop
         // keep listening for client commands
         while (gameOn) {
-            System.out.println("Listening for client commands...");
             try {
+                if (db.deckSize() < 6) {
+                    gameOn = false;
+                    break; // break out of game immediately
+                }
+                System.out.println("Listening for client commands...");
                 String clientRequest = netIO.read();
                 System.out.printf("[client] %s\n", clientRequest);
                 // client command will come in as "username " + command
                 String[] command = clientRequest.toLowerCase().split(" ");
-                String message = "Please enter a valid command"; // if empty string passed in
-                if (command.length > 0) {
-                    if (command[0].equals("0") && !command[1].equals(LOGIN)) {
-                        message = "Please login first!";
-                    } else {
-                        switch (command[1]) {
-                            case LOGIN:
-                                int buyIn = 0;
-                                if (command.length > 3) {
-                                    buyIn = Integer.parseInt(command[3]);
-                                }
-                                db.loginAddWallet(command[2], buyIn);
-                                message = "Login " + command[2] + " successful. Wallet has $" + db.checkWallet(command[2]);
-                                break;
-                            case BET:
-                                int betAmount = Integer.parseInt(command[2]);
-                                int walletAmount = db.checkWallet(command[0]);
-                                if (walletAmount < betAmount) {
-                                    message = "Insufficient amount";
-                                } else {
-                                    db.bet(command[0], betAmount);
-                                    message = "Bet accepted";
-                                }
-                                break;
-                            case DEAL:
-                                message = db.deal();
-                                int winnings = db.retrieveBet(command[0]);
-                                // parse msg to determine winner
-                                switch (results(command[2], message)) {
-                                    case "win":
-                                        message += "\nCongratulations, you've won the bet!";
-                                        winnings += winnings;
-                                        break;
-                                    case "super6":
-                                        message += "\nYou won a super 6! Payout is halved.";
-                                        winnings = (int)(winnings * 1.5);   // round down if decimal
-                                        break;
-                                    case "lose":
-                                        message += "\nYou've lost the bet.";
-                                        winnings = 0;
-                                        break;
-                                    case "tie":
-                                        message += "\nIt was a tie.";
-                                        break;
-                                    default:
-                                        break;
-                                }
-                                db.loginAddWallet(command[0], winnings);
-                                message += " Wallet now has $" + db.checkWallet(command[0]);
-                                db.flushBets();
-                                break;
-                            case WITHDRAW:
-                                int amount = db.withdrawWallet(command[0]);
-                                System.out.println(amount);
-                                message = "You have withdrawn $" + amount;
-                                break;
-                            case EXIT:
-                                message = "Thanks for playing!";
-                                gameOn = false;
-                                break;
-                            default:
-                                break;
-                        }
+                String message = "";
+
+                // check for valid command lengths (enough arguments for future methods)
+                if (command.length == 1 ||
+                        command[1].equalsIgnoreCase("exit") && command.length < 2 ||
+                        command[1].equalsIgnoreCase("withdraw") && command.length < 2 ||
+                        command[1].equalsIgnoreCase("login") && command.length < 3 ||
+                        command[1].equalsIgnoreCase("bet") && command.length < 3 ||
+                        command[1].equalsIgnoreCase("deal") && command.length < 3) {
+                    message = "Please enter a valid command";
+                }
+                // check to ensure login is first command
+                else if (command[0].equals("0") && !command[1].equals(LOGIN)) {
+                    message = "Please login first!";
+                }
+                // process valid commands
+                else {
+                    switch (command[1]) {
+                        case LOGIN:
+                            int buyIn = 0;
+                            if (command.length > 3) {
+                                buyIn = Integer.parseInt(command[3]);
+                            }
+                            db.loginAddWallet(command[2], buyIn);
+                            message = "Login " + command[2] + " successful. Wallet has $" + db.checkWallet(command[2]);
+                            break;
+                        case BET:
+                            int betAmount = Integer.parseInt(command[2]);
+                            int walletAmount = db.checkWallet(command[0]);
+                            if (walletAmount < betAmount) {
+                                message = "Insufficient amount";
+                            } else {
+                                db.bet(command[0], betAmount);
+                                message = "Bet accepted";
+                            }
+                            break;
+                        case DEAL:
+                            // send the hand to client, and read response
+                            message = db.deal(); // "P|X|X|X,B|Y|Y|Y"
+                            System.out.println(message);
+                            netIO.write(message);
+                            clientRequest = netIO.read(); // "B wins with 6 points" "Draw with 7 points"
+                            // parse msg to determine winner and allocate bet + generate message to send
+                            // back to client
+                            String sideChosen = command[2];
+                            float multiplier = winningMultiplier(sideChosen, clientRequest);
+                            int winnings = (int) (db.retrieveBet(command[0]) * multiplier); // round down if decimal
+                            db.loginAddWallet(command[0], winnings);
+                            db.flushBets(); // clear current session bets
+                            message = "Your current wallet is $" + String.valueOf(db.checkWallet(command[0]));
+                            break;
+                        case WITHDRAW:
+                            int amount = db.withdrawWallet(command[0]);
+                            System.out.println(amount);
+                            message = "You have withdrawn $" + amount;
+                            break;
+                        case EXIT:
+                            message = "Thanks for playing!";
+                            gameOn = false;
+                            break;
+                        default:
+                            break;
                     }
                 }
                 System.out.println(message);
                 netIO.write(message); // send one msg back per client command
                 System.out.println("Executed client command!");
+            } catch (SocketException se) {
+                se.printStackTrace();
             } catch (Exception e) {
                 e.printStackTrace();
+                try {
+                    netIO.write("Error");
+                } catch (IOException e1) {
+                    e1.printStackTrace();
+                }
             }
         }
 
-
+        netIO.close();
     }
 
-    public static String results(String bet, String outcome) {
-        String[] parseOutcome = outcome.split(",");
-        String[] playerHand = parseOutcome[0].split("[|]");
-        String[] brokerHand = parseOutcome[1].split("[|]");
-        int playerVal = 0;
-        int brokerVal = 0;
-        for (int i = 1; i < playerHand.length; i++) {
-            playerVal += Integer.parseInt(playerHand[i]);
+    public static float winningMultiplier(String sideChosen, String gameResults) {
+        String winner = String.valueOf(gameResults.charAt(0));
+
+        if (winner.equalsIgnoreCase("D")) {
+            return 1;
+        } else if (sideChosen.equalsIgnoreCase("B") && gameResults.equalsIgnoreCase("B wins with 6 points")) {
+            return 1.5f;
+        } else if (sideChosen.equalsIgnoreCase(winner)) {
+            return 2;
+        } else {
+            return 0;
         }
-        for (int i = 1; i < brokerHand.length; i++) {
-            brokerVal += Integer.parseInt(brokerHand[i]);
-        }
-        playerVal = playerVal % 10;
-        brokerVal = brokerVal % 10;
-        String results = null;
-        if (playerVal == brokerVal) {
-            results = "tie";
-        } else if (playerVal > brokerVal) {
-            if (bet.equalsIgnoreCase("p")) {
-                results = "win";
-            } else {
-                results = "lose";
-            }
-        } else if (playerVal < brokerVal) {
-            if (bet.equalsIgnoreCase("p")) {
-                results = "lose";
-            } else if (brokerVal == 6) {
-                results = "super6";
-            } else {
-                results = "win";
-            }
-        }
-        return results;
     }
 
 }
