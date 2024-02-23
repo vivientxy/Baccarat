@@ -17,7 +17,7 @@ java -cp classes client.ClientApp <host>:<port>
 
 To run unit tests:
 ```
-java -cp lib/junit-4.13.2.jar;lib/hamcrest-core-1.3.jar org.junit.runner.JUnitCore classes/BaccaratTest
+java -cp lib/junit-4.13.2.jar;lib/hamcrest-core-1.3.jar;classes org.junit.runner.JUnitCore BaccaratTest
 ```
 
 To view on Vercel:
